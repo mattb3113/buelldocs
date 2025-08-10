@@ -50,8 +50,8 @@ const AuthModal: React.FC<AuthModalProps> = ({
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
     }
 
     if (mode === 'register') {
@@ -72,15 +72,35 @@ const AuthModal: React.FC<AuthModalProps> = ({
     if (!validateForm()) return;
 
     setIsLoading(true);
+    setErrors({});
+
     try {
       if (mode === 'login') {
         await onLogin(formData.email, formData.password);
       } else {
         await onRegister(formData.name, formData.email, formData.password);
       }
-    } catch (error) {
-      console.error('Auth error:', error);
-      setErrors({ general: 'An error occurred. Please try again.' });
+      onClose();
+    } catch (error: any) {
+      console.error('Authentication error:', error);
+      
+      // Handle specific error messages from the backend
+      let errorMessage = 'An error occurred. Please try again.';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // Map common backend errors to user-friendly messages
+      if (errorMessage.toLowerCase().includes('email already registered')) {
+        setErrors({ email: 'This email is already registered' });
+      } else if (errorMessage.toLowerCase().includes('incorrect email or password')) {
+        setErrors({ general: 'Invalid email or password' });
+      } else if (errorMessage.toLowerCase().includes('passwords do not match')) {
+        setErrors({ confirmPassword: 'Passwords do not match' });
+      } else {
+        setErrors({ general: errorMessage });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -106,6 +126,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
+            disabled={isLoading}
           >
             <X className="h-6 w-6" />
           </button>
@@ -130,10 +151,11 @@ const AuthModal: React.FC<AuthModalProps> = ({
                   type="text"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
-                  className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 ${
                     errors.name ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="Enter your full name"
+                  disabled={isLoading}
                 />
               </div>
               {errors.name && (
@@ -152,10 +174,11 @@ const AuthModal: React.FC<AuthModalProps> = ({
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 ${
                   errors.email ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="Enter your email"
+                disabled={isLoading}
               />
             </div>
             {errors.email && (
@@ -173,15 +196,17 @@ const AuthModal: React.FC<AuthModalProps> = ({
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
-                className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 ${
                   errors.password ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="Enter your password"
+                disabled={isLoading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                disabled={isLoading}
               >
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
@@ -202,15 +227,17 @@ const AuthModal: React.FC<AuthModalProps> = ({
                   type={showConfirmPassword ? 'text' : 'password'}
                   value={formData.confirmPassword}
                   onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                  className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 ${
                     errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="Confirm your password"
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                  disabled={isLoading}
                 >
                   {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -239,7 +266,8 @@ const AuthModal: React.FC<AuthModalProps> = ({
             {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
             <button
               onClick={() => onSwitchMode(mode === 'login' ? 'register' : 'login')}
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              className="text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+              disabled={isLoading}
             >
               {mode === 'login' ? 'Sign up' : 'Sign in'}
             </button>
